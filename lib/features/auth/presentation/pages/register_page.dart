@@ -14,6 +14,10 @@ import 'dart:typed_data';
 import 'package:signature/signature.dart';
 import 'package:path_provider/path_provider.dart';
 
+// Package pour le téléphone
+import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:intl_phone_field/phone_number.dart'; // <-- Important pour le type PhoneNumber
+
 import '../../../../core/theme/app_color.dart';
 import '../../../../core/widgets/toastNotif.dart';
 import '../bloc/auth_bloc.dart';
@@ -33,7 +37,10 @@ class _RegisterPageState extends State<RegisterPage> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
+  // Variables pour les téléphones (indicatif + numéro)
+  String? _phoneNumber;
+  String? _entreprisePhoneNumber;
+
   final _addressController = TextEditingController();
   final _cinController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -41,13 +48,16 @@ class _RegisterPageState extends State<RegisterPage> {
   // Contrôleurs pour les champs professionnels
   final _rcController = TextEditingController();
   final _nineaController = TextEditingController();
+  final _nomEntrepriseController = TextEditingController();
+  final _adresseEntrepriseController = TextEditingController();
+  final _emailEntrepriseController = TextEditingController();
 
   // Variables pour les sélections
   String? _selectedRole;
   File? _profileImage;
   File? _logoImage;
 
-  // NOUVEAU : Signature pour les professionnels
+  // Signature pour les professionnels
   File? _signatureImage;
 
   // Gestion des étapes
@@ -76,7 +86,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  // NOUVEAU : Ouverture du pad de signature
+  // Ouverture du pad de signature
   Future<void> _openSignaturePad() async {
     final controller = SignatureController(
       penStrokeWidth: 3,
@@ -162,7 +172,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  // Soumission avec les nouveaux champs (incluant signature)
+  // Soumission
   void _submitRegistration() {
     if (_formKeys[1].currentState!.validate()) {
       context.read<AuthBloc>().add(
@@ -172,7 +182,7 @@ class _RegisterPageState extends State<RegisterPage> {
           email: _emailController.text.trim(),
           mot_de_passe: _passwordController.text,
           adresse: _addressController.text.trim(),
-          telephone: _phoneController.text.trim(),
+          telephone: _phoneNumber ?? '', // Numéro complet avec indicatif
           carte_identite_national_num: _cinController.text.trim(),
           role: _selectedRole ?? 'Particulier',
           photoProfil: _profileImage != null ? XFile(_profileImage!.path) : null,
@@ -180,8 +190,11 @@ class _RegisterPageState extends State<RegisterPage> {
           logo: _logoImage != null ? XFile(_logoImage!.path) : null,
           rc: _rcController.text.trim().isNotEmpty ? _rcController.text.trim() : null,
           ninea: _nineaController.text.trim().isNotEmpty ? _nineaController.text.trim() : null,
-          // NOUVEAU : Signature
           signature: _signatureImage != null ? XFile(_signatureImage!.path) : null,
+          nomEntreprise: _nomEntrepriseController.text.trim().isNotEmpty ? _nomEntrepriseController.text.trim() : null,
+          adresseEntreprise: _adresseEntrepriseController.text.trim().isNotEmpty ? _adresseEntrepriseController.text.trim() : null,
+          telephoneEntreprise: _entreprisePhoneNumber, // Numéro complet avec indicatif
+          emailEntreprise: _emailEntrepriseController.text.trim().isNotEmpty ? _emailEntrepriseController.text.trim() : null,
         ),
       );
     }
@@ -192,12 +205,14 @@ class _RegisterPageState extends State<RegisterPage> {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _addressController.dispose();
     _cinController.dispose();
     _passwordController.dispose();
     _rcController.dispose();
     _nineaController.dispose();
+    _nomEntrepriseController.dispose();
+    _adresseEntrepriseController.dispose();
+    _emailEntrepriseController.dispose();
     super.dispose();
   }
 
@@ -438,12 +453,14 @@ class _RegisterPageState extends State<RegisterPage> {
           isRequired: true,
         ),
         const SizedBox(height: 16),
-        _buildTextFieldWithLabel(
+        // Champ téléphone avec IntlPhoneField
+        _buildPhoneField(
           label: 'Téléphone',
-          hint: 'Ex: 77 ... .. ..',
-          controller: _phoneController,
-          prefixIcon: Icons.phone_outlined,
-          keyboardType: TextInputType.phone,
+          onChanged: (phone) {
+            setState(() {
+              _phoneNumber = phone.completeNumber; // stocke le numéro complet avec indicatif
+            });
+          },
           isRequired: true,
         ),
         const SizedBox(height: 16),
@@ -494,8 +511,54 @@ class _RegisterPageState extends State<RegisterPage> {
           const SizedBox(height: 24),
           const Divider(color: AppColor.kLine, thickness: 1),
           const SizedBox(height: 16),
+
+          // Nom de l'entreprise
+          _buildTextFieldWithLabel(
+            label: 'Nom de l’entreprise',
+            hint: 'Ex: Mon Entreprise SARL',
+            controller: _nomEntrepriseController,
+            prefixIcon: Icons.apartment_outlined,
+            isRequired: true,
+          ),
+          const SizedBox(height: 16),
+
+          // Adresse de l'entreprise
+          _buildTextFieldWithLabel(
+            label: 'Adresse de l’entreprise',
+            hint: 'Ex: Dakar, Sénégal',
+            controller: _adresseEntrepriseController,
+            prefixIcon: Icons.location_on_outlined,
+            isRequired: true,
+          ),
+          const SizedBox(height: 16),
+
+          // Téléphone de l'entreprise avec IntlPhoneField
+          _buildPhoneField(
+            label: 'Téléphone de l’entreprise',
+            onChanged: (phone) {
+              setState(() {
+                _entreprisePhoneNumber = phone.completeNumber;
+              });
+            },
+            isRequired: true,
+          ),
+          const SizedBox(height: 16),
+
+          // Email de l'entreprise
+          _buildTextFieldWithLabel(
+            label: 'Email de l’entreprise',
+            hint: 'Ex: contact@monentreprise.sn',
+            controller: _emailEntrepriseController,
+            prefixIcon: Icons.email_outlined,
+            isRequired: true,
+          ),
+          const SizedBox(height: 16),
+
+          // Logo
           _buildLogoSection(),
           const SizedBox(height: 16),
+
+          // RC
           _buildTextFieldWithLabel(
             label: 'Registre de Commerce (RC)',
             hint: 'Ex: RC 2023 B 12345',
@@ -504,6 +567,8 @@ class _RegisterPageState extends State<RegisterPage> {
             isRequired: true,
           ),
           const SizedBox(height: 16),
+
+          // NINEA
           _buildTextFieldWithLabel(
             label: 'NINEA',
             hint: 'Ex: 123456789',
@@ -512,9 +577,73 @@ class _RegisterPageState extends State<RegisterPage> {
             isRequired: true,
           ),
           const SizedBox(height: 16),
-          // NOUVEAU : Section signature
+
+          // Signature
           _buildSignatureSection(),
         ],
+      ],
+    );
+  }
+
+  // Widget pour le champ téléphone avec IntlPhoneField
+  Widget _buildPhoneField({
+    required String label,
+    required void Function(PhoneNumber) onChanged, // PhoneNumber non nullable
+    bool isRequired = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: AppColor.kGrayscaleDark100,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+            if (isRequired)
+              Text(
+                ' *',
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColor.kLine, width: 1.5),
+          ),
+          child: IntlPhoneField(
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              hintText: 'Votre numéro',
+              hintStyle: GoogleFonts.plusJakartaSans(
+                color: AppColor.kGrayscale40,
+                fontSize: 16,
+              ),
+            ),
+            initialCountryCode: 'SN', // Sénégal par défaut
+            onChanged: onChanged,
+            validator: (phone) {
+              if (phone == null || phone.number.isEmpty) {
+                return 'Ce champ est requis';
+              }
+              if (!phone.isValidNumber()) {
+                return 'Numéro invalide pour le pays sélectionné';
+              }
+              return null;
+            },
+          ),
+        ),
       ],
     );
   }
@@ -843,7 +972,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // NOUVEAU : Section signature
+  // Section signature
   Widget _buildSignatureSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

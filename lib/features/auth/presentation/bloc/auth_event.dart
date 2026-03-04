@@ -36,6 +36,12 @@ class RegisterRequested extends AuthEvent {
   final String? ninea;
   final XFile? signature;
 
+  // Champs entreprise ajoutés
+  final String? nomEntreprise;
+  final String? adresseEntreprise;
+  final String? telephoneEntreprise;
+  final String? emailEntreprise;
+
   const RegisterRequested({
     required this.nom,
     required this.prenom,
@@ -50,6 +56,10 @@ class RegisterRequested extends AuthEvent {
     this.rc,
     this.ninea,
     this.signature,
+    this.nomEntreprise,
+    this.adresseEntreprise,
+    this.telephoneEntreprise,
+    this.emailEntreprise,
   });
 
   @override
@@ -66,7 +76,11 @@ class RegisterRequested extends AuthEvent {
     logo,
     rc,
     ninea,
-    signature
+    signature,
+    nomEntreprise,
+    adresseEntreprise,
+    telephoneEntreprise,
+    emailEntreprise,
   ];
 }
 

@@ -59,7 +59,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       logo: event.logo,
       rc: event.rc,
       ninea: event.ninea,
-      signature: event.signature
+      signature: event.signature,
+
+      // Champs entreprise ajoutés
+      nomEntreprise: event.nomEntreprise,
+      adresseEntreprise: event.adresseEntreprise,
+      telephoneEntreprise: event.telephoneEntreprise,
+      emailEntreprise: event.emailEntreprise,
     );
 
     result.fold(
@@ -85,6 +91,4 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthFailure(message: 'Erreur lors de la déconnexion : $e'));
     }
   }
-
-
 }

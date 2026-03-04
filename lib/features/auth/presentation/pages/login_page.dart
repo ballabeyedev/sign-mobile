@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:toastification/toastification.dart';
 import 'package:flutter/gestures.dart';
-import 'dart:async';
+import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:intl_phone_field/phone_number.dart';
 
 import 'package:sign_application/core/routes/app_router.dart';
-import 'package:sign_application/core/widgets/primary_button.dart';
 import 'package:sign_application/core/widgets/primary_text_button.dart';
 import 'package:sign_application/core/widgets/primary_text_formField.dart';
-import 'package:sign_application/core/widgets/secondary_button.dart';
 import 'package:sign_application/core/widgets/toastNotif.dart';
-import 'package:sign_application/features/auth/presentation/widgets/Custom_rich_text.dart';
-import 'package:sign_application/features/auth/presentation/widgets/Divider_row.dart';
 import 'package:sign_application/features/auth/presentation/widgets/PasswordTextField.dart';
-import 'package:sign_application/features/auth/presentation/widgets/TermsAndPrivacyText.dart';
 import '../../../../core/theme/app_color.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
@@ -28,90 +23,33 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage>
-    with SingleTickerProviderStateMixin {
-  final TextEditingController _identifiantController = TextEditingController();
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  bool _showSplash = true;
-  late Timer _timer;
-
-  // Animations du splash
-  late AnimationController _splashController;
-  late Animation<double> _fadeLogo;
-  late Animation<double> _scaleLogo;
-  late Animation<Offset> _slideLogo;
-  late Animation<double> _fadeLoader;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Contrôleur principal pour le splash (5 secondes)
-    _splashController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 10),
-    );
-
-    // Animation du logo : apparition progressive + zoom + léger slide vers le haut
-    _fadeLogo = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _splashController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
-      ),
-    );
-    _scaleLogo = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _splashController,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeOutBack),
-      ),
-    );
-    _slideLogo = Tween<Offset>(
-      begin: const Offset(0.0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _splashController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    // Animation du loader : apparition retardée pour un effet en cascade
-    _fadeLoader = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _splashController,
-        curve: const Interval(0.4, 0.8, curve: Curves.easeIn),
-      ),
-    );
-
-    // Lancer l'animation
-    _splashController.forward();
-
-    // Après 5 secondes, basculer vers le formulaire de connexion
-    _timer = Timer(const Duration(seconds: 5), () {
-      if (mounted) {
-        setState(() {
-          _showSplash = false;
-        });
-      }
-    });
-  }
+  // Variables pour le téléphone
+  String? _phoneNumber; // numéro complet avec indicatif
+  bool _isEmail = true; // true = email, false = téléphone
 
   @override
   void dispose() {
-    _timer.cancel();
-    _splashController.dispose();
-    _identifiantController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   void _onLoginPressed() {
     if (_formKey.currentState!.validate()) {
+      String identifiant;
+      if (_isEmail) {
+        identifiant = _emailController.text.trim();
+      } else {
+        identifiant = _phoneNumber ?? '';
+      }
       context.read<AuthBloc>().add(
         LoginRequested(
-          identifiant: _identifiantController.text,
+          identifiant: identifiant,
           mot_de_passe: _passwordController.text,
         ),
       );
@@ -120,156 +58,15 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 800),
-        switchInCurve: Curves.easeOutQuad,
-        switchOutCurve: Curves.easeInQuad,
-        child: _showSplash
-            ? _buildSplashScreen()
-            : _buildLoginScreen(),
-      ),
-    );
-  }
-
-  // -------------------------------------------------------------------------
-  // SPLASH SCREEN – ÉLÉGANT, ANIMATIONS FLUIDES
-  // -------------------------------------------------------------------------
-  Widget _buildSplashScreen() {
-    return Container(
-      key: const ValueKey('splash'),
-      width: double.infinity,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.white,
-            AppColor.kPrimary.withOpacity(0.05),
-            Colors.white,
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: Center(
-        child: AnimatedBuilder(
-          animation: _splashController,
-          builder: (context, child) {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo avec animation complète
-                FadeTransition(
-                  opacity: _fadeLogo,
-                  child: ScaleTransition(
-                    scale: _scaleLogo,
-                    child: SlideTransition(
-                      position: _slideLogo,
-                      child: Hero(
-                        tag: 'app-logo',
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColor.kPrimary.withOpacity(0.2),
-                                blurRadius: 30,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: Image.asset(
-                            'assets/images/logo_sign.jpeg',
-                            width: 180,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 48),
-                // Indicateur de chargement avec animation de pulsation
-                FadeTransition(
-                  opacity: _fadeLoader,
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.8, end: 1.0),
-                    duration: const Duration(milliseconds: 800),
-                    curve: Curves.easeInOut,
-                    builder: (context, value, child) {
-                      return Transform.scale(
-                        scale: value,
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColor.kPrimary.withOpacity(0.1),
-                          ),
-                          child: Center(
-                            child: SizedBox(
-                              width: 32,
-                              height: 32,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColor.kPrimary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Texte de bienvenue qui apparaît en dernier
-                FadeTransition(
-                  opacity: _fadeLoader,
-                  child: Text(
-                    'Sign Application',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: AppColor.kGrayscale40, // ✅ Correction : kGrayscale60 → kGrayscale40
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  // -------------------------------------------------------------------------
-  // PAGE DE CONNEXION (identique à votre code d'origine)
-  // -------------------------------------------------------------------------
-  Widget _buildLoginScreen() {
     return BlocConsumer<AuthBloc, AuthState>(
-      key: const ValueKey('login'),
       listener: (context, state) {
         if (state is AuthSuccess) {
           final role = state.user.role.toLowerCase();
-          final nom = state.user.nom.toLowerCase();
-          final prenom = state.user.prenom.toLowerCase();
-          final email = state.user.email.toLowerCase();
           String route = AppRouter.homeRoute;
-          final arguments = {
-            'nom': state.user.nom,
-            'prenom': state.user.prenom,
-            'email': state.user.email,
-          };
 
-          if (role == 'client') {
+          if (role == 'particulier') {
             route = AppRouter.clientRoute;
-          } else if (role == 'professionnel') {
+          } else if (role == 'professionnel' || role == 'independant') {
             route = AppRouter.professionnelRoute;
           }
 
@@ -278,7 +75,6 @@ class _LoginPageState extends State<LoginPage>
                 (route) => false,
             arguments: state.user,
           );
-
 
           showToast(
             context,
@@ -298,54 +94,35 @@ class _LoginPageState extends State<LoginPage>
       builder: (context, state) {
         final isLoading = state is AuthLoading;
 
-        return Stack(
-          children: [
-            _buildBackground(),
-            SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 60),
-                      _buildHeader(),
-                      const SizedBox(height: 48),
-                      _buildLoginCard(isLoading),
-                      const SizedBox(height: 32),
-                      _buildTermsAndPrivacy(),
-                    ],
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            children: [
+              SafeArea(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 10),
+                          _buildLoginCard(isLoading),
+                          const SizedBox(height: 32),
+                          _buildTermsAndPrivacy(),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
-    );
-  }
-
-  Widget _buildBackground() {
-    return Column(
-      children: [
-        Expanded(
-          flex: 2,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColor.kPrimary.withOpacity(0.08),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-        Expanded(flex: 3, child: Container()),
-      ],
     );
   }
 
@@ -353,18 +130,35 @@ class _LoginPageState extends State<LoginPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Center( // 🔥 AJOUTE CE CENTER
+        Center(
           child: Hero(
             tag: 'app-logo',
-            child: Image.asset(
-              'assets/images/logosign.jpeg',
-              width: 150,
+            child: Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/logosign.jpeg',
+                  width: 90,
+                  height: 90,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
           ),
         ),
-
-        const SizedBox(height: 32),
-
+        const SizedBox(height: 10),
         RichText(
           text: TextSpan(
             children: [
@@ -388,7 +182,6 @@ class _LoginPageState extends State<LoginPage>
             ],
           ),
         ),
-
         Padding(
           padding: const EdgeInsets.only(top: 12),
           child: Text(
@@ -404,7 +197,6 @@ class _LoginPageState extends State<LoginPage>
       ],
     );
   }
-
 
   Widget _buildLoginCard(bool isLoading) {
     return Container(
@@ -429,13 +221,11 @@ class _LoginPageState extends State<LoginPage>
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          _buildTextFieldWithLabel(
-            label: 'Email ou téléphone',
-            hint: 'exemple@entreprise.com ou 77XXXXXXX',
-            controller: _identifiantController,
-            prefixIcon: Icons.person_outline,
-            keyboardType: TextInputType.emailAddress,
-          ),
+          // Sélecteur Email / Téléphone
+          _buildSelector(),
+          const SizedBox(height: 16),
+          // Champ conditionnel
+          _buildIdentifierField(),
           const SizedBox(height: 24),
           _buildPasswordField(),
           const SizedBox(height: 20),
@@ -449,18 +239,86 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  Widget _buildTextFieldWithLabel({
-    required String label,
-    required String hint,
-    required TextEditingController controller,
-    required IconData prefixIcon,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
+  Widget _buildSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColor.kBackground,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: ChoiceChip(
+              label: Text(
+                'Email',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              selected: _isEmail,
+              onSelected: (selected) {
+                setState(() {
+                  _isEmail = true;
+                  _phoneNumber = null; // reset phone
+                });
+              },
+              selectedColor: AppColor.kPrimary,
+              backgroundColor: Colors.transparent,
+              labelStyle: TextStyle(
+                color: _isEmail ? Colors.white : AppColor.kGrayscale40,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ChoiceChip(
+              label: Text(
+                'Téléphone',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              selected: !_isEmail,
+              onSelected: (selected) {
+                setState(() {
+                  _isEmail = false;
+                  _emailController.clear(); // reset email
+                });
+              },
+              selectedColor: AppColor.kPrimary,
+              backgroundColor: Colors.transparent,
+              labelStyle: TextStyle(
+                color: !_isEmail ? Colors.white : AppColor.kGrayscale40,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIdentifierField() {
+    if (_isEmail) {
+      return _buildEmailField();
+    } else {
+      return _buildPhoneField();
+    }
+  }
+
+  Widget _buildEmailField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          label,
+          'Email',
           style: GoogleFonts.plusJakartaSans(
             color: AppColor.kGrayscaleDark100,
             fontWeight: FontWeight.w600,
@@ -479,20 +337,80 @@ class _LoginPageState extends State<LoginPage>
             children: [
               Padding(
                 padding: const EdgeInsets.only(left: 16),
-                child: Icon(prefixIcon, color: AppColor.kPrimary, size: 20),
+                child: Icon(Icons.email_outlined, color: AppColor.kPrimary, size: 20),
               ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(right: 16),
                   child: PrimaryTextFormField(
-                    controller: controller,
-                    hintText: hint,
+                    controller: _emailController,
+                    hintText: 'exemple@email.com',
                     height: 50,
                     width: double.infinity,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Ce champ est requis';
+                      }
+                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                        return 'Email invalide';
+                      }
+                      return null;
+                    },
                   ),
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Téléphone',
+          style: GoogleFonts.plusJakartaSans(
+            color: AppColor.kGrayscaleDark100,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            letterSpacing: -0.2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColor.kLine, width: 1.5),
+          ),
+          child: IntlPhoneField(
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              hintText: 'Votre numéro',
+              hintStyle: GoogleFonts.plusJakartaSans(
+                color: AppColor.kGrayscale40,
+                fontSize: 16,
+              ),
+            ),
+            initialCountryCode: 'SN',
+            onChanged: (phone) {
+              setState(() {
+                _phoneNumber = phone.completeNumber;
+              });
+            },
+            validator: (phone) {
+              if (phone == null || phone.number.isEmpty) {
+                return 'Ce champ est requis';
+              }
+              if (!phone.isValidNumber()) {
+                return 'Numéro invalide pour le pays sélectionné';
+              }
+              return null;
+            },
           ),
         ),
       ],
@@ -532,6 +450,12 @@ class _LoginPageState extends State<LoginPage>
                   height: 50,
                   width: double.infinity,
                   borderRadius: BorderRadius.circular(12),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Ce champ est requis';
+                    }
+                    return null;
+                  },
                 ),
               ),
             ],

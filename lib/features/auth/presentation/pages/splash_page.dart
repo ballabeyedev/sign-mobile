@@ -32,7 +32,7 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
-    Navigator.of(context).pushReplacementNamed(AppRouter.loginRoute);
+    Navigator.of(context).pushReplacementNamed(AppRouter.onboardingRoute);
   }
 
   @override

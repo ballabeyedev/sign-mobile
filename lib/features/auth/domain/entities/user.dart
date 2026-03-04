@@ -16,6 +16,12 @@ class User extends Equatable {
   final String? ninea;
   final String? signature;
 
+  // Champs entreprise
+  final String? nomEntreprise;
+  final String? adresseEntreprise;
+  final String? telephoneEntreprise;
+  final String? emailEntreprise;
+
   const User({
     required this.id,
     required this.nom,
@@ -31,6 +37,10 @@ class User extends Equatable {
     this.rc,
     this.ninea,
     this.signature,
+    this.nomEntreprise,
+    this.adresseEntreprise,
+    this.telephoneEntreprise,
+    this.emailEntreprise,
   });
 
   Map<String, dynamic> toJson() => {
@@ -47,8 +57,32 @@ class User extends Equatable {
     'logo': logo,
     'rc': rc,
     'ninea': ninea,
+    'signature': signature,
+    'nomEntreprise': nomEntreprise,
+    'adresseEntreprise': adresseEntreprise,
+    'telephoneEntreprise': telephoneEntreprise,
+    'emailEntreprise': emailEntreprise,
   };
 
   @override
-  List<Object?> get props => [id, nom, prenom, email, telephone, role,carte_identite_national_num, rc,ninea ];
+  List<Object?> get props => [
+    id,
+    nom,
+    prenom,
+    email,
+    mot_de_passe,
+    adresse,
+    telephone,
+    carte_identite_national_num,
+    role,
+    photoProfil,
+    logo,
+    rc,
+    ninea,
+    signature,
+    nomEntreprise,
+    adresseEntreprise,
+    telephoneEntreprise,
+    emailEntreprise,
+  ];
 }

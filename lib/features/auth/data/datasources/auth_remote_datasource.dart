@@ -20,6 +20,11 @@ abstract class AuthRemoteDataSource {
     String? rc,
     String? ninea,
     XFile? signature,
+
+    String? nomEntreprise,
+    String? adresseEntreprise,
+    String? telephoneEntreprise,
+    String? emailEntreprise,
   });
 }
 
@@ -107,6 +112,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     XFile? photoProfil,
     XFile? logo,
     XFile? signature,
+
+    String? nomEntreprise,
+    String? adresseEntreprise,
+    String? telephoneEntreprise,
+    String? emailEntreprise,
   }) async {
     try {
       print('========== REGISTER REQUEST ==========');
@@ -124,6 +134,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'role': role,
         'rc': rc,
         'ninea': ninea,
+        'nomEntreprise': nomEntreprise,
+        'adresseEntreprise': adresseEntreprise,
+        'telephoneEntreprise': telephoneEntreprise,
+        'emailEntreprise': emailEntreprise,
+
       });
 
       // Ajouter le fichier photoProfil s'il existe
@@ -158,6 +173,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         print('Avec fichier logo: $fileName');
       }
 
+      // Ajouter le fichier signature s'il existe
+      if (signature != null) {
+        final file = File(signature.path);
+        final fileName = signature.path.split('/').last;
+
+        formData.files.add(MapEntry(
+          'signature',
+          await MultipartFile.fromFile(
+            file.path,
+            filename: fileName,
+          ),
+        ));
+
+        print('Avec fichier signature: $fileName');
+      }
+
       print('Payload :');
       print({
         'nom': nom,
@@ -169,6 +200,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'carte_identite_national_num': carte_identite_national_num,
         'role': role,
         'photoProfil': photoProfil != null ? 'présent' : 'absent',
+        'logo': logo != null ? 'présent' : 'absent',
+        'signature': signature != null ? 'présent' : 'absent',
       });
 
       final response = await dio.post(

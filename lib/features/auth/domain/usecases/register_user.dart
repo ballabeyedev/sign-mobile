@@ -22,6 +22,12 @@ class RegisterUser {
     String? rc,
     String? ninea,
     XFile? signature,
+
+    // Champs entreprise ajoutés
+    String? nomEntreprise,
+    String? adresseEntreprise,
+    String? telephoneEntreprise,
+    String? emailEntreprise,
   }) async {
     return await repository.register(
       nom: nom,
@@ -36,7 +42,11 @@ class RegisterUser {
       logo: logo,
       rc: rc,
       ninea: ninea,
-      signature: signature
+      signature: signature,
+      nomEntreprise: nomEntreprise,
+      adresseEntreprise: adresseEntreprise,
+      telephoneEntreprise: telephoneEntreprise,
+      emailEntreprise: emailEntreprise,
     );
   }
 }

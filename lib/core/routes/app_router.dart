@@ -8,6 +8,9 @@ import 'package:sign_application/features/auth/presentation/widgets/ContiditionU
 import 'package:sign_application/features/auth/presentation/widgets/PolitiqueConfidentialite.dart';
 import 'package:sign_application/features/auth/domain/entities/user.dart';
 
+import 'package:sign_application/features/auth/presentation/pages/onboarding_page.dart';
+
+
 class AppRouter {
   static const String loginRoute = '/login';
   static const String registerRoute = '/register';
@@ -17,6 +20,8 @@ class AppRouter {
 
   static const String politiqueConfRoute = '/politique-confidentialite';
   static const String contiditionUtilisationRoute = '/condition-utilisation';
+
+  static const String onboardingRoute = '/onboarding';
 
 
 
@@ -38,13 +43,20 @@ class AppRouter {
         );
 
       case professionnelRoute:
-        return MaterialPageRoute(builder: (_) => const ProfessionnelPage());
+        final user = settings.arguments as User?;
+        return MaterialPageRoute(
+            builder: (_) => ProfessionnelPage(user: user)
+        );
 
       case politiqueConfRoute:
         return MaterialPageRoute(builder: (_) => PolitiqueConfidentialite());
 
       case contiditionUtilisationRoute:
         return MaterialPageRoute(builder: (_) => const ConditionUtilisation());
+
+      case onboardingRoute:
+        return MaterialPageRoute(builder: (_) => const OnboardingPage1());
+
 
       default:
         return MaterialPageRoute(

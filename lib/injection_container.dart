@@ -61,7 +61,7 @@ Future<void> init() async {
       BaseOptions(
         baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 120),
         sendTimeout: const Duration(seconds: 60),
         contentType: 'application/json',
         headers: {

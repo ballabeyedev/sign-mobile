@@ -35,8 +35,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } on DioException catch (e) {
       String message = 'Une erreur est survenue';
 
-      if (e.response?.data is Map &&
-          e.response?.data['message'] != null) {
+      if (e.response?.data is Map && e.response?.data['message'] != null) {
         message = e.response!.data['message'];
       } else if (e.message != null) {
         message = e.message!;
@@ -63,6 +62,12 @@ class AuthRepositoryImpl implements AuthRepository {
     String? rc,
     String? ninea,
     XFile? signature,
+
+    // Champs entreprise ajoutés
+    String? nomEntreprise,
+    String? adresseEntreprise,
+    String? telephoneEntreprise,
+    String? emailEntreprise,
   }) async {
     try {
       final authResponse = await remoteDataSource.register(
@@ -79,6 +84,10 @@ class AuthRepositoryImpl implements AuthRepository {
         rc: rc,
         ninea: ninea,
         signature: signature,
+        nomEntreprise: nomEntreprise,
+        adresseEntreprise: adresseEntreprise,
+        telephoneEntreprise: telephoneEntreprise,
+        emailEntreprise: emailEntreprise,
       );
 
       await sl<TokenService>().setToken(authResponse.token);
@@ -87,8 +96,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } on DioException catch (e) {
       String message = 'Une erreur est survenue';
 
-      if (e.response?.data is Map &&
-          e.response?.data['message'] != null) {
+      if (e.response?.data is Map && e.response?.data['message'] != null) {
         message = e.response!.data['message'];
       } else if (e.message != null) {
         message = e.message!;

@@ -15,12 +15,11 @@ class CreeFacture extends StatefulWidget {
 class _CreeFactureState extends State<CreeFacture> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _rechercheController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
+  // Supprimé _descriptionController
   final TextEditingController _dateEcheanceController = TextEditingController();
   final TextEditingController _delaisExecutionController = TextEditingController();
   final TextEditingController _lieuExecutionController = TextEditingController();
   final TextEditingController _avanceController = TextEditingController();
-  final TextEditingController _moyenPaiementController = TextEditingController();
 
   List<dynamic> _clientsTrouves = [];
   bool _isRechercheLoading = false;
@@ -29,19 +28,22 @@ class _CreeFactureState extends State<CreeFacture> {
   DateTime? _dateEcheance;
   Dio? _dio;
 
+  // Structure d'un item : type, designation, quantite, prix_unitaire
   List<Map<String, dynamic>> _items = [
-    {'designation': '', 'quantite': 1, 'prix_unitaire': 0.0}
+    {'type': 'service', 'designation': '', 'quantite': 1, 'prix_unitaire': 0.0}
   ];
 
   final List<String> _moyensPaiement = [
-    'ESPECES',
-    'VIREMENT BANCAIRE',
-    'CARTE BANCAIRE',
-    'CHEQUE',
-    'MOBILE MONEY',
+    'ESPECES', 'ORANGE MONEY', 'WAVE', 'CARTE BANCAIRE', 'CHEQUE', 'VIREMENT',
     'AUTRE'
   ];
   String? _selectedMoyenPaiement;
+
+  // Nouvelle variable pour la TVA
+  String? _selectedTva;
+  final List<String> _tvaOptions = ['0', '10', '18'];
+
+  final List<String> _typesItem = ['produit', 'service'];
 
   @override
   void initState() {
@@ -62,25 +64,42 @@ class _CreeFactureState extends State<CreeFacture> {
     }
   }
 
-  void _ajouterItem() => setState(() => _items.add(
-      {'designation': '', 'quantite': 1, 'prix_unitaire': 0.0}));
+  void _ajouterItem({String type = 'service'}) {
+    setState(() {
+      _items.add({
+        'type': type,
+        'designation': '',
+        'quantite': 1,
+        'prix_unitaire': 0.0
+      });
+    });
+  }
 
   void _supprimerItem(int index) {
     if (_items.length > 1) {
       setState(() => _items.removeAt(index));
     } else {
-      setState(() =>
-      _items[0] = {'designation': '', 'quantite': 1, 'prix_unitaire': 0.0});
+      // Réinitialiser le premier item
+      setState(() {
+        _items[0] = {'type': 'service', 'designation': '', 'quantite': 1, 'prix_unitaire': 0.0};
+      });
     }
   }
 
-  void _mettreAJourItem(int index, String champ, dynamic valeur) =>
-      setState(() => _items[index][champ] = valeur);
+  void _mettreAJourItem(int index, String champ, dynamic valeur) {
+    setState(() {
+      _items[index][champ] = valeur;
+    });
+  }
 
   double _calculerMontantTotal() {
     double total = 0;
     for (var item in _items) {
-      total += (item['quantite'] ?? 0) * (item['prix_unitaire'] ?? 0);
+      double quantite = (item['type'] == 'produit'
+          ? (item['quantite'] ?? 1).toDouble()
+          : 1.0);
+      double prixUnitaire = (item['prix_unitaire'] ?? 0.0).toDouble();
+      total += quantite * prixUnitaire;
     }
     return total;
   }
@@ -99,19 +118,26 @@ class _CreeFactureState extends State<CreeFacture> {
       });
       return;
     }
+
     setState(() {
       _isRechercheLoading = true;
       _rechercheErreur = '';
     });
+
     try {
       await handleDioRequest(context, () async {
-        Map<String, dynamic> params = {};
-        if (query.isNotEmpty) params['nom'] = query;
         final response = await _dio!.get(
           '/professionnel/client/recherche-client',
-          queryParameters: params,
+          queryParameters: {
+            'nom': query,
+            'prenom': query,
+            'email': query,
+            'carte_identite_national_num': query,
+            'telephone': query,
+          },
           options: Options(headers: {'Content-Type': 'application/json'}),
         );
+
         if (response.statusCode == 200) {
           setState(() {
             _clientsTrouves = response.data['utilisateurs'] ?? [];
@@ -138,8 +164,7 @@ class _CreeFactureState extends State<CreeFacture> {
     });
   }
 
-  void _annulerSelectionClient() =>
-      setState(() => _clientSelectionne = null);
+  void _annulerSelectionClient() => setState(() => _clientSelectionne = null);
 
   Future<void> _selectDateEcheance(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -179,7 +204,7 @@ class _CreeFactureState extends State<CreeFacture> {
           );
           return;
         }
-        if ((item['quantite'] ?? 0) <= 0) {
+        if (item['type'] == 'produit' && (item['quantite'] ?? 0) <= 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
                 content: Text(
@@ -200,6 +225,14 @@ class _CreeFactureState extends State<CreeFacture> {
       }
       try {
         await handleDioRequest(context, () async {
+          final itemsPayload = _items.map((item) {
+            return {
+              'designation': item['designation'],
+              'quantite': item['type'] == 'produit' ? item['quantite'] : 1,
+              'prix_unitaire': item['prix_unitaire'],
+            };
+          }).toList();
+
           final nouvelleFacture = {
             'clientId': _clientSelectionne['id'],
             'delais_execution': _delaisExecutionController.text,
@@ -207,14 +240,11 @@ class _CreeFactureState extends State<CreeFacture> {
             'avance': double.tryParse(_avanceController.text) ?? 0,
             'lieu_execution': _lieuExecutionController.text,
             'moyen_paiement': _selectedMoyenPaiement ?? 'ESPECES',
-            'items': _items.map((item) => ({
-              'designation': item['designation'],
-              'quantite': item['quantite'],
-              'prix_unitaire': item['prix_unitaire'],
-            })).toList(),
+            'items': itemsPayload,
             'montant_total': _calculerMontantTotal(),
             'solde': _calculerSolde(),
-            'description': _descriptionController.text,
+            // Ajout de la TVA
+            'tva': int.parse(_selectedTva ?? '0'), // envoi en pourcentage
           };
           final response = await _dio!.post(
             '/professionnel/document/creer-document',
@@ -269,6 +299,7 @@ class _CreeFactureState extends State<CreeFacture> {
                   style: TextStyle(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 24),
 
+              // Client
               const Text('Client *',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -367,10 +398,11 @@ class _CreeFactureState extends State<CreeFacture> {
 
               const SizedBox(height: 24),
 
+              // Articles
               const Text('Articles *',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const Text('Ajoutez les produits ou services',
+              const Text('Ajoutez des produits ou services',
                   style: TextStyle(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 12),
 
@@ -379,38 +411,76 @@ class _CreeFactureState extends State<CreeFacture> {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _items.length,
                 itemBuilder: (context, index) {
+                  final item = _items[index];
+                  final bool isProduit = item['type'] == 'produit';
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // En-tête de la ligne : type + bouton supprimer
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Article ${index + 1}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: DropdownButton<String>(
+                                    value: item['type'],
+                                    isDense: true,
+                                    underline: const SizedBox(),
+                                    icon: const Icon(Icons.arrow_drop_down, size: 20),
+                                    items: _typesItem.map((type) {
+                                      return DropdownMenuItem(
+                                        value: type,
+                                        child: Text(
+                                          type == 'produit' ? '📦 Produit' : '🛠️ Service',
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        _mettreAJourItem(index, 'type', value);
+                                        if (value == 'service') {
+                                          _mettreAJourItem(index, 'quantite', 1);
+                                        }
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
                               if (_items.length > 1)
                                 IconButton(
-                                  icon: const Icon(Icons.delete,
-                                      color: Colors.red),
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
                                   onPressed: () => _supprimerItem(index),
-                                  iconSize: 20,
                                   padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
+
+                          // Désignation
                           TextFormField(
                             decoration: InputDecoration(
                               labelText: 'Désignation *',
-                              hintText: 'Ex: Prestation test 1',
+                              hintText: isProduit ? 'Ex: Ordinateur portable' : 'Ex: Prestation de conseil',
                               border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                             ),
-                            initialValue: _items[index]['designation'],
+                            initialValue: item['designation'],
                             onChanged: (value) =>
                                 _mettreAJourItem(index, 'designation', value),
                             validator: (value) => value == null ||
@@ -419,52 +489,56 @@ class _CreeFactureState extends State<CreeFacture> {
                                 : null,
                           ),
                           const SizedBox(height: 12),
+
+                          // Ligne quantité (seulement pour produit) et prix
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: TextFormField(
-                                  decoration: InputDecoration(
-                                    labelText: 'Quantité *',
-                                    hintText: 'Ex: 1',
-                                    border: OutlineInputBorder(
-                                        borderRadius:
-                                        BorderRadius.circular(8)),
+                              if (isProduit)
+                                Expanded(
+                                  child: TextFormField(
+                                    decoration: InputDecoration(
+                                      labelText: 'Quantité *',
+                                      hintText: 'Ex: 2',
+                                      border: OutlineInputBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(8)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    initialValue: item['quantite'].toString(),
+                                    onChanged: (value) {
+                                      int? quantite = int.tryParse(value);
+                                      if (quantite != null && quantite > 0) {
+                                        _mettreAJourItem(
+                                            index, 'quantite', quantite);
+                                      }
+                                    },
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Requis';
+                                      }
+                                      final quantite = int.tryParse(value);
+                                      if (quantite == null || quantite <= 0) {
+                                        return 'Quantité invalide';
+                                      }
+                                      return null;
+                                    },
                                   ),
-                                  keyboardType: TextInputType.number,
-                                  initialValue: _items[index]['quantite']
-                                      .toString(),
-                                  onChanged: (value) {
-                                    int? quantite = int.tryParse(value);
-                                    if (quantite != null && quantite > 0) {
-                                      _mettreAJourItem(
-                                          index, 'quantite', quantite);
-                                    }
-                                  },
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Veuillez entrer une quantité';
-                                    }
-                                    final quantite = int.tryParse(value);
-                                    if (quantite == null || quantite <= 0) {
-                                      return 'Quantité invalide';
-                                    }
-                                    return null;
-                                  },
                                 ),
-                              ),
-                              const SizedBox(width: 12),
+                              if (isProduit) const SizedBox(width: 12),
                               Expanded(
                                 child: TextFormField(
                                   decoration: InputDecoration(
                                     labelText: 'Prix unitaire (FCFA) *',
-                                    hintText: 'Ex: 700000',
+                                    hintText: 'Ex: 5000',
                                     border: OutlineInputBorder(
                                         borderRadius:
                                         BorderRadius.circular(8)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                                   ),
                                   keyboardType: TextInputType.number,
-                                  initialValue: _items[index]['prix_unitaire']
-                                      .toString(),
+                                  initialValue: item['prix_unitaire'].toString(),
                                   onChanged: (value) {
                                     double? prix = double.tryParse(value);
                                     if (prix != null && prix >= 0) {
@@ -474,7 +548,7 @@ class _CreeFactureState extends State<CreeFacture> {
                                   },
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Veuillez entrer un prix';
+                                      return 'Requis';
                                     }
                                     final prix = double.tryParse(value);
                                     if (prix == null || prix < 0) {
@@ -486,15 +560,25 @@ class _CreeFactureState extends State<CreeFacture> {
                               ),
                             ],
                           ),
-                          if (_items[index]['quantite'] > 0 &&
-                              _items[index]['prix_unitaire'] > 0)
+
+                          // Affichage du sous-total
+                          if (item['prix_unitaire'] > 0)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                'Sous-total: ${(_items[index]['quantite'] * _items[index]['prix_unitaire']).toStringAsFixed(0)} FCFA',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    'Sous-total: ',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                  Text(
+                                    '${((isProduit ? item['quantite'] : 1) * item['prix_unitaire']).toStringAsFixed(0)} FCFA',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green),
+                                  ),
+                                ],
                               ),
                             ),
                         ],
@@ -504,20 +588,41 @@ class _CreeFactureState extends State<CreeFacture> {
                 },
               ),
 
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _ajouterItem,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Ajouter un article'),
-                  style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12)),
-                ),
+              // Boutons pour ajouter produit ou service
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _ajouterItem(type: 'produit'),
+                      icon: const Icon(Icons.inventory_2_outlined),
+                      label: const Text('Ajouter produit'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: Colors.blue.shade300),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _ajouterItem(type: 'service'),
+                      icon: const Icon(Icons.build_outlined),
+                      label: const Text('Ajouter service'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: Colors.orange.shade300),
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 16),
 
+              // Récapitulatif financier
               Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -550,6 +655,7 @@ class _CreeFactureState extends State<CreeFacture> {
                           prefixIcon: const Icon(Icons.payment),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         ),
                         keyboardType: TextInputType.number,
                         onChanged: (value) => setState(() {}),
@@ -588,6 +694,7 @@ class _CreeFactureState extends State<CreeFacture> {
 
               const SizedBox(height: 16),
 
+              // Délais d'exécution
               const Text('Délais d\'exécution *',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -598,6 +705,7 @@ class _CreeFactureState extends State<CreeFacture> {
                   prefixIcon: const Icon(Icons.timer),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 ),
                 validator: (value) => value == null || value.isEmpty
                     ? 'Veuillez spécifier les délais'
@@ -606,6 +714,7 @@ class _CreeFactureState extends State<CreeFacture> {
 
               const SizedBox(height: 16),
 
+              // Lieu d'exécution
               const Text('Lieu d\'exécution *',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -616,6 +725,7 @@ class _CreeFactureState extends State<CreeFacture> {
                   prefixIcon: const Icon(Icons.location_on),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 ),
                 validator: (value) => value == null || value.isEmpty
                     ? 'Veuillez spécifier le lieu'
@@ -624,6 +734,7 @@ class _CreeFactureState extends State<CreeFacture> {
 
               const SizedBox(height: 16),
 
+              // Moyen de paiement
               const Text('Moyen de paiement *',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -634,6 +745,7 @@ class _CreeFactureState extends State<CreeFacture> {
                   prefixIcon: const Icon(Icons.payment),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 ),
                 items: _moyensPaiement
                     .map((moyen) => DropdownMenuItem(
@@ -648,6 +760,7 @@ class _CreeFactureState extends State<CreeFacture> {
 
               const SizedBox(height: 16),
 
+              // Date d'échéance
               const Text('Date d\'échéance *',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -663,6 +776,7 @@ class _CreeFactureState extends State<CreeFacture> {
                   ),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 ),
                 validator: (value) => value == null || value.isEmpty
                     ? 'Veuillez sélectionner une date'
@@ -671,22 +785,33 @@ class _CreeFactureState extends State<CreeFacture> {
 
               const SizedBox(height: 16),
 
-              const Text('Description',
+              // TVA (remplace Description)
+              const Text('TVA (%) *',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 3,
+              DropdownButtonFormField<String>(
+                value: _selectedTva,
                 decoration: InputDecoration(
-                  labelText: 'Optionnel',
-                  prefixIcon: const Icon(Icons.description),
+                  labelText: 'Sélectionnez le taux',
+                  prefixIcon: const Icon(Icons.percent),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 ),
+                items: _tvaOptions
+                    .map((tva) => DropdownMenuItem(
+                    value: tva, child: Text('$tva %')))
+                    .toList(),
+                onChanged: (value) =>
+                    setState(() => _selectedTva = value),
+                validator: (value) => value == null
+                    ? 'Veuillez sélectionner un taux'
+                    : null,
               ),
 
               const SizedBox(height: 32),
 
+              // Bouton de création
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -695,6 +820,8 @@ class _CreeFactureState extends State<CreeFacture> {
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Créer la facture',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -711,12 +838,11 @@ class _CreeFactureState extends State<CreeFacture> {
   @override
   void dispose() {
     _rechercheController.dispose();
-    _descriptionController.dispose();
+    // _descriptionController supprimé
     _dateEcheanceController.dispose();
     _delaisExecutionController.dispose();
     _lieuExecutionController.dispose();
     _avanceController.dispose();
-    _moyenPaiementController.dispose();
     super.dispose();
   }
 }

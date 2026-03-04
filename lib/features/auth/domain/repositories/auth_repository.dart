@@ -23,5 +23,11 @@ abstract class AuthRepository {
     String? rc,
     String? ninea,
     XFile? signature,
+
+    // Champs entreprise ajoutés
+    String? nomEntreprise,
+    String? adresseEntreprise,
+    String? telephoneEntreprise,
+    String? emailEntreprise,
   });
 }

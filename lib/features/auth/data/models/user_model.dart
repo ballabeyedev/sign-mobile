@@ -16,6 +16,10 @@ class UserModel extends User {
     super.rc,
     super.ninea,
     super.signature,
+    super.nomEntreprise,
+    super.adresseEntreprise,
+    super.telephoneEntreprise,
+    super.emailEntreprise,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -34,6 +38,10 @@ class UserModel extends User {
       rc: json['rc'],
       ninea: json['ninea'],
       signature: json['signature'],
+      nomEntreprise: json['nomEntreprise'],
+      adresseEntreprise: json['adresseEntreprise'],
+      telephoneEntreprise: json['telephoneEntreprise'],
+      emailEntreprise: json['emailEntreprise'],
     );
   }
 
@@ -53,6 +61,10 @@ class UserModel extends User {
       'rc': rc,
       'ninea': ninea,
       'signature': signature,
+      'nomEntreprise': nomEntreprise,
+      'adresseEntreprise': adresseEntreprise,
+      'telephoneEntreprise': telephoneEntreprise,
+      'emailEntreprise': emailEntreprise,
     };
   }
 }

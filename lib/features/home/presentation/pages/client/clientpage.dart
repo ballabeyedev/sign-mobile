@@ -37,9 +37,15 @@ class _ClientPageState extends State<ClientPage> {
 
     // Créer les pages qui nécessitent les données utilisateur
     final List<Widget> _pages = [
-      HomeClientPage(user: user),
+      HomeClientPage(
+        user: user,
+        nombreFactures: 5,        // Ici tu peux mettre tes données dynamiques
+        contratsSignes: 3,
+        contratsEnAttente: 2,
+      ),
+      Center(child: Text('Factures', style: TextStyle(fontSize: 24))),
       Center(child: Text('Contrats', style: TextStyle(fontSize: 24))),
-      ProfilPage(user: user), // Nouvelle page profil avec les infos
+      ProfilPage(user: user),
       Center(child: Text('Déconnexion', style: TextStyle(fontSize: 24))),
     ];
 
@@ -47,21 +53,32 @@ class _ClientPageState extends State<ClientPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: Text(
-          user != null
-              ? 'Bonjour, ${user.prenom} ${user.nom}'
-              : 'Bonjour, Utilisateur',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              (user?.prenom ?? '') + ' ' + (user?.nom ?? ''),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if ((user?.email ?? '').isNotEmpty)
+              Text(
+                user!.email,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
+          ],
         ),
-        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: _logout,
+            tooltip: 'Déconnexion',
           ),
         ],
       ),
@@ -73,7 +90,7 @@ class _ClientPageState extends State<ClientPage> {
         backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
-          if (index == 3) {
+          if (index == 4) { // dernier item => Déconnexion
             _logout();
           } else {
             setState(() {
@@ -85,6 +102,10 @@ class _ClientPageState extends State<ClientPage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             label: 'Accueil',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long_outlined),
+            label: 'Factures',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.description_outlined),
@@ -107,16 +128,33 @@ class _ClientPageState extends State<ClientPage> {
 class HomeClientPage extends StatelessWidget {
   final User? user;
 
-  const HomeClientPage({super.key, this.user});
+  // Tu peux passer ici les données réelles depuis ton backend
+  final int nombreFactures;
+  final int contratsSignes;
+  final int contratsEnAttente;
+
+  const HomeClientPage({
+    super.key,
+    this.user,
+    this.nombreFactures = 0,
+    this.contratsSignes = 0,
+    this.contratsEnAttente = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final List<Map<String, String>> cardsData = [
+      {'title': 'Factures', 'value': nombreFactures.toString()},
+      {'title': 'Contrats signés', 'value': contratsSignes.toString()},
+      {'title': 'Contrats en attente', 'value': contratsEnAttente.toString()},
+    ];
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section bienvenue avec infos utilisateur
+          // Bienvenue
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -125,30 +163,13 @@ class HomeClientPage extends StatelessWidget {
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bienvenue, ${user?.prenom ?? ''} !',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (user != null) ...[
-                  Text('Email: ${user!.email}'),
-                  Text('Téléphone: ${user!.telephone}'),
-                  Text('Adresse: ${user!.adresse}'),
-                  Text('Rôle: ${user!.role}'),
-                ],
-              ],
             ),
           ),
-          const SizedBox(height: 24),
 
           // Cartes de statistiques
           Expanded(
             child: GridView.builder(
-              itemCount: 2,
+              itemCount: cardsData.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
@@ -156,10 +177,6 @@ class HomeClientPage extends StatelessWidget {
                 childAspectRatio: 1.2,
               ),
               itemBuilder: (context, index) {
-                final cardsData = [
-                  {'title': 'Contrats signés', 'value': '2'},
-                  {'title': 'Contrats en attente', 'value': '4'},
-                ];
                 final card = cardsData[index];
 
                 return Container(
